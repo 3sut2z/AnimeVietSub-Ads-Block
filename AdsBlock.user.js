@@ -7,6 +7,8 @@
 // @license      MIT
 
 // @match        *://animevietsub.bz/*
+// @match        *://lh3.googleusercontent.com/*
+// @match        *://storage.googleapiscdn.com/*
 // @match        *://*.googleapiscdn.com/8
 
 // @grant        GM_addStyle
