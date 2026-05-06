@@ -27,7 +27,7 @@
 
     // 1. DANH SÁCH ĐEN TOÀN DIỆN (Domains & Keywords)
     const BLACKLIST_DOMAINS = [
-        'five88', 'ball88', 'yo88', 'hitclub', 'gemwin', 'zowin', 'min88', '6789x', 'nhatvip',
+        'five88', 'ball88', 'yo88', 'hitclub', 'gemwin', 'zowin', 'min88', '6789x', 'nhatvip', 'bom88.ac',
         'haywin', 'sunwin', 'rikvip', 'go88', '789club', 'iwin', 'oxbet', 'lucky88', 'debet.gs', 'p3',
         'google-analytics', 'googletagmanager', 'facebook.net', 'doubleclick', 'histats',
         'onclickalgo', 'mobiads', 'popads', 'adnxs', 'criteo', 'pubmatic', 'animevietsubapp'
