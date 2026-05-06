@@ -7,8 +7,6 @@
 // @license      MIT
 
 // @match        *://animevietsub.bz/*
-// @match        *://lh3.googleusercontent.com/*
-// @match        *://storage.googleapiscdn.com/*
 // @match        *://*.googleapiscdn.com/8
 
 // @grant        GM_addStyle
@@ -21,113 +19,116 @@
 (function() {
     'use strict';
 
-    const BLACKLIST_DOMAINS = ['bom88', 'five88', 'ball88', 'yo88', 'hitclub', 'gemwin', 'zowin', 'min88', 'nhatvip', 'sunwin', 'go88', '789club', 'iwin', 'oxbet', 'lucky88', 'debet', 'p3', 'qc.rikvip.ci'];
-    const AD_KEYWORDS = ['utm_source', 'utm_medium', 'catfish', 'popunder', 'ads-server', 'avs-loader', 'devtools-warning'];
-    const AD_SELECTORS = ['#pc-catfixx', '#mobile-catfish-top', '#mobile-catfixx', '.header-ads-pc', '.header-ads-mobile', '.below-player', '#avs-pause-ad', 'iframe[src*="bom88"]'];
+    const bypassLogic = () => {
 
-    const bypassNewJS = () => {
-
-        if (!window.is) window.is = {};
-        Object.defineProperty(window.is, 'SmartTV', {
-            get: () => () => true,
-            configurable: false
-        });
-
-        const expiration = new Date();
-        expiration.setTime(expiration.getTime() + (365 * 24 * 60 * 60 * 1000));
-        document.cookie = `popupOpened=true; expires=${expiration.toUTCString()}; path=/`;
-
-        window.createPopupAndRedirect = function(url) {
-            console.log("%c[Blocked] Web tried to redirect to: " + url, "color: red");
-            return false;
+        const smartTVHandler = {
+            get: function(target, prop) {
+                return prop === 'SmartTV' ? () => true : target[prop];
+            }
         };
+        window.is = new Proxy(window.is || {}, smartTVHandler);
+
+        window.createPopupAndRedirect = function() { return false; };
+        window.markPopupAsOpened = function() { return true; };
+
+        try {
+            const originalCookie = document.__lookupGetter__('cookie');
+            Object.defineProperty(document, 'cookie', {
+                get: function() {
+                    const c = originalCookie.call(document);
+                    return c.includes('popupOpened=true') ? c : (c ? c + '; popupOpened=true' : 'popupOpened=true');
+                },
+                set: function(val) {
+                    return val; // Chặn việc web cố tình set popupOpened=false
+                }
+            });
+        } catch (e) {}
     };
 
-    const initWindowLock = () => {
-        try {
-            const originalOpen = window.open;
-            Object.defineProperty(window, 'open', {
-                value: function(url) {
-                    if (url && (BLACKLIST_DOMAINS.some(d => url.toLowerCase().includes(d)) || AD_KEYWORDS.some(k => url.toLowerCase().includes(k)))) {
-                        console.log("%c[Shield] Chặn đứng Window.open quảng cáo", "color: orange");
-                        return null;
-                    }
+    const lockSystem = () => {
+        const BLACKLIST = ['bom88', 'rikvip', 'five88', 'ball88', 'yo88', 'hitclub', 'min88', 'nhatvip', 'sunwin', 'go88', 'haywin', 'p3'];
 
-                    if (url) window.location.href = url;
-                    return null;
-                },
-                writable: false,
-                configurable: false
-            });
-        } catch (e) {
-            window.open = () => null;
-        }
+        const originalOpen = window.open;
+        window.open = function(url, target, features) {
+            if (!url) return null;
+            const lowUrl = url.toLowerCase();
+            if (BLACKLIST.some(d => lowUrl.includes(d))) {
+                console.warn('[Shield] Đã chặn đứng cửa sổ quảng cáo:', url);
+                return null;
+            }
+
+            window.location.href = url;
+            return null;
+        };
+
+        Object.defineProperty(window, 'open', { configurable: false, writable: false });
     };
 
     document.addEventListener('click', function(e) {
-        const target = e.target.closest('a');
-        if (target && target.href) {
-            const href = target.href.toLowerCase();
+        const target = e.target.closest('a, [onclick], button');
+        if (target) {
+            const href = (target.href || "").toLowerCase();
+            const onClick = (target.getAttribute('onclick') || "").toLowerCase();
+            const badKeywords = ['bom88', 'rikvip', 'five88', 'ball88', 'yo88', 'sunwin'];
 
-            if (BLACKLIST_DOMAINS.some(d => href.includes(d)) || AD_KEYWORDS.some(k => href.includes(k))) {
+            if (badKeywords.some(k => href.includes(k) || onClick.includes(k))) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
                 target.remove();
                 return false;
             }
 
-            if (target.target === '_blank') {
+            if (target.tagName === 'A' && target.target === '_blank') {
                 target.target = '_self';
             }
         }
     }, true);
 
-    function heavyCleaning() {
+    GM_addStyle(`
+        #pc-catfixx, #mobile-catfish-top, #mobile-catfixx,
+        .header-ads-pc, .header-ads-mobile, .below-player, .below-playerm,
+        #avs-pause-ad, #avs-pause-ad-box, iframe[src*="bom88"], iframe[src*="rikvip"],
+        a[href*="bom88"], a[href*="rikvip"], a[href*="five88"],
+        div[class*="ads-"], .ads-container {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            pointer-events: none !important;
+        }
+        body, html {
+            overflow: auto !important;
+            pointer-events: auto !important;
+            user-select: auto !important;
+        }
+    `);
 
-        AD_SELECTORS.forEach(s => {
-            document.querySelectorAll(s).forEach(el => el.remove());
-        });
+    const observer = new MutationObserver(() => {
 
-        const closeWords = ['ĐÓNG', 'TẮT', 'CLOSE', 'SKIP', 'BỎ QUA', '×', 'RESUME', 'XEM TIẾP'];
-        document.querySelectorAll('button, span, a, div[role="button"]').forEach(btn => {
-            const txt = (btn.innerText || "").trim().toUpperCase();
-            if (closeWords.includes(txt)) {
-                const style = window.getComputedStyle(btn);
-                if (style.display !== 'none' && parseInt(style.zIndex) > 0) {
-                    btn.click();
-                }
+        const closeWords = ['ĐÓNG', 'TẮT', 'CLOSE', 'SKIP', '×'];
+        document.querySelectorAll('button, span, div[role="button"]').forEach(btn => {
+            if (closeWords.includes(btn.innerText.trim().toUpperCase())) {
+                const s = window.getComputedStyle(btn);
+                if (s.display !== 'none' && parseInt(s.zIndex) > 0) btn.click();
             }
         });
 
         document.querySelectorAll('div').forEach(div => {
-            const style = window.getComputedStyle(div);
-            if (parseInt(style.zIndex) > 100 && style.position === 'fixed') {
-                if (!div.querySelector('video') && !div.id.includes('player') && !div.className.includes('player')) {
-                    div.remove();
-                }
+            const z = parseInt(window.getComputedStyle(div).zIndex);
+            if (z > 500 && !div.querySelector('video') && !div.id.includes('player')) {
+                div.remove();
             }
         });
-    }
+    });
 
-    bypassNewJS();
-    initWindowLock();
-
-    const observer = new MutationObserver(heavyCleaning);
+    bypassLogic();
+    lockSystem();
     observer.observe(document.documentElement, { childList: true, subtree: true });
 
-    const originalCookieSetter = document.__lookupSetter__('cookie');
-    document.__defineSetter__('cookie', function(val) {
-        if (val.includes('popupOpened=false')) return;
-        return originalCookieSetter.call(document, val);
-    });
-
-    window.addEventListener('load', () => {
-        heavyCleaning();
-
-        document.body.style.setProperty('overflow', 'auto', 'important');
-        document.documentElement.style.setProperty('overflow', 'auto', 'important');
-    });
-
-    window.addEventListener('contextmenu', (e) => e.stopPropagation(), true);
+    window.addEventListener('contextmenu', e => e.stopPropagation(), true);
+    window.addEventListener('keydown', e => {
+        if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74))) {
+            e.stopPropagation();
+        }
+    }, true);
 
 })();
