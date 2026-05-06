@@ -10,6 +10,8 @@
 // @match        https://animevietsub.bz/phim/*
 // @match        https://lh3.googleusercontent.com/*
 // @match        https://min88.site/*
+// @match        https://animevietsub.bz/ajax/all
+// @match        https://bom88.ac/*
 // @match        .googleapiscdn.com/*
 // @match        https://storage.googleapiscdn.com/*
 
